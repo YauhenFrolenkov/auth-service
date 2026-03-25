@@ -11,7 +11,8 @@ class JwtProviderTest {
 
     @BeforeEach
     void setUp() {
-        jwtProvider = new JwtProvider();
+        jwtProvider = new JwtProvider("testJwtSecretKeyForUnitTestsOnly12345");
+        jwtProvider.init();
     }
 
     @Test

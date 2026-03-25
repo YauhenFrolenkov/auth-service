@@ -27,6 +27,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/auth_service_db
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
+      JWT_SECRET: superSecretKeyThatIsLongEnoughForJwt123456789
 
 volumes:
   postgres_data:

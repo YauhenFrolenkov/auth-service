@@ -114,4 +114,45 @@ class AuthServiceImplTest {
 
         assertTrue(result);
     }
+
+    @Test
+    void shouldThrowExceptionIfUserAlreadyExists() {
+        RegisterRequest request = new RegisterRequest("test", "1234");
+
+        when(userRepository.existsByUsername("test")).thenReturn(true);
+
+        assertThrows(RuntimeException.class, () -> authService.register(request));
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowExceptionIfRoleNotFound() {
+        RegisterRequest request = new RegisterRequest("test", "1234");
+
+        when(userRepository.existsByUsername("test")).thenReturn(false);
+        when(roleRepository.findByName(Role.RoleName.USER)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> authService.register(request));
+    }
+
+    @Test
+    void shouldReturnFalseIfTokenInvalid() {
+        String token = "invalidToken";
+
+        when(jwtProvider.validateToken(token)).thenReturn(false);
+
+        boolean result = authService.validateToken(token);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void shouldThrowExceptionIfRefreshTokenInvalid() {
+        String refreshToken = "invalid";
+
+        when(jwtProvider.validateToken(refreshToken)).thenReturn(false);
+
+        assertThrows(RuntimeException.class, () -> authService.refresh(refreshToken));
+    }
 }

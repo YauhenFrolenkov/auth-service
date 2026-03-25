@@ -2,14 +2,30 @@ package com.innowise.auth.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
 @Component
 public class JwtProvider {
-    private final Key jwtSecret = Keys.hmacShaKeyFor("yourSuperSecretKeyForJwtTokenThatIsLongEnough".getBytes());
+
+    private final String jwtSecretString;
+    private Key jwtSecret;
+
+    public JwtProvider(@Value("${jwt.secret}") String jwtSecretString) {
+        this.jwtSecretString = jwtSecretString;
+    }
+
+    @PostConstruct
+    public void init() {
+        this.jwtSecret = Keys.hmacShaKeyFor(jwtSecretString.getBytes(StandardCharsets.UTF_8));
+    }
+
+
     private final long jwtExpirationMs = 3600000;
     private final long refreshExpirationMs = 86400000;
 
