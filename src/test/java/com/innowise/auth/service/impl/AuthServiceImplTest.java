@@ -5,6 +5,9 @@ import com.innowise.auth.dto.AuthResponseDto;
 import com.innowise.auth.dto.RegisterRequest;
 import com.innowise.auth.entity.Role;
 import com.innowise.auth.entity.User;
+import com.innowise.auth.exception.InvalidCredentialsException;
+import com.innowise.auth.exception.ResourceNotFoundException;
+import com.innowise.auth.exception.UserAlreadyExistsException;
 import com.innowise.auth.repository.RoleRepository;
 import com.innowise.auth.repository.UserRepository;
 import com.innowise.auth.security.JwtProvider;
@@ -42,7 +45,6 @@ class AuthServiceImplTest {
     @Test
     void shouldRegisterUser() {
         RegisterRequest request = new RegisterRequest("test", "1234");
-
         Role role = new Role(1L, Role.RoleName.USER);
 
         when(userRepository.existsByUsername("test")).thenReturn(false);
@@ -55,9 +57,26 @@ class AuthServiceImplTest {
     }
 
     @Test
+    void shouldThrowExceptionIfUserAlreadyExists() {
+        RegisterRequest request = new RegisterRequest("test", "1234");
+        when(userRepository.existsByUsername("test")).thenReturn(true);
+
+        assertThrows(UserAlreadyExistsException.class, () -> authService.register(request));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowExceptionIfRoleNotFound() {
+        RegisterRequest request = new RegisterRequest("test", "1234");
+        when(userRepository.existsByUsername("test")).thenReturn(false);
+        when(roleRepository.findByName(Role.RoleName.USER)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> authService.register(request));
+    }
+
+    @Test
     void shouldLoginSuccessfully() {
         AuthRequestDto request = new AuthRequestDto("test", "1234");
-
         Role role = new Role(1L, Role.RoleName.USER);
         User user = User.builder()
                 .id(1L)
@@ -81,78 +100,73 @@ class AuthServiceImplTest {
     @Test
     void shouldThrowExceptionIfUserNotFound() {
         AuthRequestDto request = new AuthRequestDto("test", "1234");
-
         when(userRepository.findByUsername("test")).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> authService.login(request));
+        assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
     }
 
     @Test
     void shouldThrowExceptionIfPasswordInvalid() {
         AuthRequestDto request = new AuthRequestDto("test", "1234");
-
-        User user = User.builder()
-                .id(1L)
-                .username("test")
-                .password("encoded")
-                .roles(Set.of(new Role(1L, Role.RoleName.USER)))
-                .build();
+        User user = User.builder().id(1L).username("test").password("encoded")
+                .roles(Set.of(new Role(1L, Role.RoleName.USER))).build();
 
         when(userRepository.findByUsername("test")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("1234", "encoded")).thenReturn(false);
 
-        assertThrows(RuntimeException.class, () -> authService.login(request));
+        assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
     }
 
     @Test
-    void shouldValidateToken() {
-        String token = "validToken";
+    void shouldRefreshTokensSuccessfully() {
+        String refreshToken = "valid";
+        User user = User.builder().id(1L)
+                .roles(Set.of(new Role(1L, Role.RoleName.USER))).build();
 
-        when(jwtProvider.validateToken(token)).thenReturn(true);
+        when(jwtProvider.validateToken(refreshToken)).thenReturn(true);
+        when(jwtProvider.getUserIdFromToken(refreshToken)).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(jwtProvider.generateAccessToken(1L, "USER")).thenReturn("newAccess");
+        when(jwtProvider.generateRefreshToken(1L)).thenReturn("newRefresh");
 
-        boolean result = authService.validateToken(token);
+        AuthResponseDto response = authService.refresh(refreshToken);
 
-        assertTrue(result);
-    }
-
-    @Test
-    void shouldThrowExceptionIfUserAlreadyExists() {
-        RegisterRequest request = new RegisterRequest("test", "1234");
-
-        when(userRepository.existsByUsername("test")).thenReturn(true);
-
-        assertThrows(RuntimeException.class, () -> authService.register(request));
-
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void shouldThrowExceptionIfRoleNotFound() {
-        RegisterRequest request = new RegisterRequest("test", "1234");
-
-        when(userRepository.existsByUsername("test")).thenReturn(false);
-        when(roleRepository.findByName(Role.RoleName.USER)).thenReturn(Optional.empty());
-
-        assertThrows(RuntimeException.class, () -> authService.register(request));
-    }
-
-    @Test
-    void shouldReturnFalseIfTokenInvalid() {
-        String token = "invalidToken";
-
-        when(jwtProvider.validateToken(token)).thenReturn(false);
-
-        boolean result = authService.validateToken(token);
-
-        assertFalse(result);
+        assertNotNull(response);
+        assertEquals("newAccess", response.getAccessToken());
+        assertEquals("newRefresh", response.getRefreshToken());
     }
 
     @Test
     void shouldThrowExceptionIfRefreshTokenInvalid() {
         String refreshToken = "invalid";
-
         when(jwtProvider.validateToken(refreshToken)).thenReturn(false);
 
-        assertThrows(RuntimeException.class, () -> authService.refresh(refreshToken));
+        assertThrows(InvalidCredentialsException.class, () -> authService.refresh(refreshToken));
+    }
+
+    @Test
+    void shouldThrowExceptionIfUserNotFoundOnRefresh() {
+        String refreshToken = "valid";
+        when(jwtProvider.validateToken(refreshToken)).thenReturn(true);
+        when(jwtProvider.getUserIdFromToken(refreshToken)).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> authService.refresh(refreshToken));
+    }
+
+    @Test
+    void shouldReturnTrueIfTokenValid() {
+        String token = "validToken";
+        when(jwtProvider.validateToken(token)).thenReturn(true);
+
+        assertTrue(authService.validateToken(token));
+    }
+
+    @Test
+    void shouldReturnFalseIfTokenInvalid() {
+        String token = "invalidToken";
+        when(jwtProvider.validateToken(token)).thenReturn(false);
+
+        assertFalse(authService.validateToken(token));
     }
 }

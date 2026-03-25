@@ -5,6 +5,9 @@ import com.innowise.auth.dto.AuthResponseDto;
 import com.innowise.auth.dto.RegisterRequest;
 import com.innowise.auth.entity.Role;
 import com.innowise.auth.entity.User;
+import com.innowise.auth.exception.InvalidCredentialsException;
+import com.innowise.auth.exception.ResourceNotFoundException;
+import com.innowise.auth.exception.UserAlreadyExistsException;
 import com.innowise.auth.repository.RoleRepository;
 import com.innowise.auth.repository.UserRepository;
 import com.innowise.auth.security.JwtProvider;
@@ -27,11 +30,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("User already exists");
+            throw new UserAlreadyExistsException("User already exists");
         }
 
         Role role = roleRepository.findByName(Role.RoleName.USER)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -45,10 +48,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponseDto login(AuthRequestDto request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid username or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid username or password");
+            throw new InvalidCredentialsException("Invalid username or password");
         }
 
         String role = user.getRoles().iterator().next().getName().name();
@@ -62,13 +65,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponseDto refresh(String refreshToken) {
         if (!jwtProvider.validateToken(refreshToken)) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new InvalidCredentialsException("Invalid refresh token");
         }
 
         Long userId = jwtProvider.getUserIdFromToken(refreshToken);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String role = user.getRoles().iterator().next().getName().name();
 

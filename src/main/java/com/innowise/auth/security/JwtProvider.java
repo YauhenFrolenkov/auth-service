@@ -26,15 +26,15 @@ public class JwtProvider {
     }
 
 
-    private final long jwtExpirationMs = 3600000;
-    private final long refreshExpirationMs = 86400000;
+    private static final long JWT_EXPIRATION_MS = 3600000;
+    private static final long REFRESH_EXPIRATION_MS = 86400000;
 
     public String generateAccessToken(Long userId, String role) {
         return Jwts.builder()
                 .setSubject(userId.toString())
                 .claim("role", role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
                 .signWith(jwtSecret)
                 .compact();
     }
@@ -43,7 +43,7 @@ public class JwtProvider {
         return Jwts.builder()
                 .setSubject(userId.toString())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_MS))
                 .signWith(jwtSecret)
                 .compact();
     }
