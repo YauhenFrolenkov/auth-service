@@ -17,7 +17,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,10 +62,12 @@ class AuthControllerIT {
     @DisplayName("Refresh returns new access token")
     void refresh_shouldReturnNewAccessToken() throws Exception {
         AuthResponseDto responseDto = new AuthResponseDto("new-access-token", "refresh-token");
+
         when(authService.refresh("refresh-token")).thenReturn(responseDto);
 
         mockMvc.perform(post("/auth/refresh")
-                        .param("refreshToken", "refresh-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"refresh-token\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("new-access-token"))
                 .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
@@ -77,10 +78,27 @@ class AuthControllerIT {
     void validate_shouldReturnTrue() throws Exception {
         when(authService.validateToken("valid-token")).thenReturn(true);
 
-        mockMvc.perform(get("/auth/validate")
-                        .param("token", "valid-token"))
+        mockMvc.perform(post("/auth/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"valid-token\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value(true));
+    }
+
+    @Test
+    void refresh_shouldReturnBadRequest_whenTokenEmpty() throws Exception {
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void validate_shouldReturnBadRequest_whenTokenEmpty() throws Exception {
+        mockMvc.perform(post("/auth/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"\"}"))
+                .andExpect(status().isBadRequest());
     }
 }
 

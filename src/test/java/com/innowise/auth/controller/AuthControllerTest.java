@@ -1,9 +1,7 @@
 package com.innowise.auth.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.innowise.auth.dto.AuthRequestDto;
-import com.innowise.auth.dto.AuthResponseDto;
-import com.innowise.auth.dto.RegisterRequest;
+import com.innowise.auth.dto.*;
 import com.innowise.auth.security.JwtProvider;
 import com.innowise.auth.service.AuthService;
 import org.junit.jupiter.api.Test;
@@ -15,11 +13,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -65,33 +61,65 @@ class AuthControllerTest {
 
     @Test
     void refresh_shouldReturnNewAccessToken() throws Exception {
+        RefreshTokenRequest request = new RefreshTokenRequest("testRefreshToken");
+
         AuthResponseDto response = new AuthResponseDto("newAccessToken", "newRefreshToken");
 
-        when(authService.refresh(anyString())).thenReturn(response);
+        when(authService.refresh("testRefreshToken")).thenReturn(response);
 
         mockMvc.perform(post("/auth/refresh")
-                        .param("refreshToken", "testRefreshToken"))
-                .andExpect(status().isOk());
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("newAccessToken"))
+                .andExpect(jsonPath("$.refreshToken").value("newRefreshToken"));
     }
 
     @Test
     void validate_shouldReturnTrue() throws Exception {
-        when(authService.validateToken(anyString())).thenReturn(true);
+        TokenValidationRequest request = new TokenValidationRequest("testToken");
 
-        mockMvc.perform(get("/auth/validate")
-                        .param("token", "testToken"))
-                .andExpect(status().isOk());
+        when(authService.validateToken("testToken")).thenReturn(true);
+
+        mockMvc.perform(post("/auth/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("true"));
     }
 
     @Test
     void validate_shouldReturnFalse() throws Exception {
-        when(authService.validateToken(anyString())).thenReturn(false);
+        TokenValidationRequest request = new TokenValidationRequest("invalidToken");
 
-        mockMvc.perform(get("/auth/validate")
-                        .param("token", "invalidToken"))
-                .andExpect(status().isOk());
+        when(authService.validateToken("invalidToken")).thenReturn(false);
+
+        mockMvc.perform(post("/auth/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("false"));
     }
 
+    @Test
+    void login_shouldFailValidation_whenEmptyFields() throws Exception {
+        AuthRequestDto request = new AuthRequestDto("", "");
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void register_shouldFailValidation_whenEmptyFields() throws Exception {
+        RegisterRequest request = new RegisterRequest("", "");
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 
 }
 

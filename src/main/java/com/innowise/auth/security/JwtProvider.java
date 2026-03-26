@@ -33,6 +33,7 @@ public class JwtProvider {
         return Jwts.builder()
                 .setSubject(userId.toString())
                 .claim("role", role)
+                .claim("tokenType", "ACCESS")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
                 .signWith(jwtSecret)
@@ -42,6 +43,7 @@ public class JwtProvider {
     public String generateRefreshToken(Long userId) {
         return Jwts.builder()
                 .setSubject(userId.toString())
+                .claim("tokenType", "REFRESH")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_MS))
                 .signWith(jwtSecret)
@@ -65,6 +67,16 @@ public class JwtProvider {
     public String getRoleFromToken(String token) {
         Claims claims = Jwts.parserBuilder().setSigningKey(jwtSecret).build().parseClaimsJws(token).getBody();
         return claims.get("role", String.class);
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder().setSigningKey(jwtSecret).build().parseClaimsJws(token).getBody();
+            String type = claims.get("tokenType", String.class);
+            return "REFRESH".equals(type);
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 }
 

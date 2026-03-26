@@ -124,6 +124,7 @@ class AuthServiceImplTest {
                 .roles(Set.of(new Role(1L, Role.RoleName.USER))).build();
 
         when(jwtProvider.validateToken(refreshToken)).thenReturn(true);
+        when(jwtProvider.isRefreshToken(refreshToken)).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(refreshToken)).thenReturn(1L);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(jwtProvider.generateAccessToken(1L, "USER")).thenReturn("newAccess");
@@ -148,6 +149,7 @@ class AuthServiceImplTest {
     void shouldThrowExceptionIfUserNotFoundOnRefresh() {
         String refreshToken = "valid";
         when(jwtProvider.validateToken(refreshToken)).thenReturn(true);
+        when(jwtProvider.isRefreshToken(refreshToken)).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(refreshToken)).thenReturn(1L);
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -168,5 +170,15 @@ class AuthServiceImplTest {
         when(jwtProvider.validateToken(token)).thenReturn(false);
 
         assertFalse(authService.validateToken(token));
+    }
+
+    @Test
+    void shouldThrowExceptionIfTokenIsNotRefreshToken() {
+        String token = "accessToken";
+
+        when(jwtProvider.validateToken(token)).thenReturn(true);
+        when(jwtProvider.isRefreshToken(token)).thenReturn(false);
+
+        assertThrows(InvalidCredentialsException.class, () -> authService.refresh(token));
     }
 }

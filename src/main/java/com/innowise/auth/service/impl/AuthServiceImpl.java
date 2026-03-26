@@ -64,7 +64,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponseDto refresh(String refreshToken) {
-        if (!jwtProvider.validateToken(refreshToken)) {
+        if (!jwtProvider.validateToken(refreshToken) || !jwtProvider.isRefreshToken(refreshToken)) {
             throw new InvalidCredentialsException("Invalid refresh token");
         }
 

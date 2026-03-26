@@ -12,10 +12,10 @@ import lombok.Setter;
 @AllArgsConstructor
 public class RegisterRequest {
 
-    @NotBlank
+    @NotBlank(message = "Username must not be blank")
     private String username;
 
-    @NotBlank
+    @NotBlank(message = "Password must not be blank")
     private String password;
 
 }
