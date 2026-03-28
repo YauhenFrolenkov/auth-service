@@ -8,6 +8,7 @@ import com.innowise.auth.entity.User;
 import com.innowise.auth.exception.InvalidCredentialsException;
 import com.innowise.auth.exception.ResourceNotFoundException;
 import com.innowise.auth.exception.UserAlreadyExistsException;
+import com.innowise.auth.exception.UserHasNoRolesException;
 import com.innowise.auth.repository.RoleRepository;
 import com.innowise.auth.repository.UserRepository;
 import com.innowise.auth.security.JwtProvider;
@@ -54,7 +55,12 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        String role = user.getRoles().iterator().next().getName().name();
+        Set<Role> roles = user.getRoles();
+        if (roles.isEmpty()) {
+            throw new UserHasNoRolesException("User has no roles assigned");
+        }
+
+        String role = roles.iterator().next().getName().name();
 
         String accessToken = jwtProvider.generateAccessToken(user.getId(), role);
         String refreshToken = jwtProvider.generateRefreshToken(user.getId());
@@ -73,7 +79,12 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        String role = user.getRoles().iterator().next().getName().name();
+        Set<Role> roles = user.getRoles();
+        if (roles.isEmpty()) {
+            throw new UserHasNoRolesException("User has no roles assigned");
+        }
+
+        String role = roles.iterator().next().getName().name();
 
         String newAccessToken = jwtProvider.generateAccessToken(user.getId(), role);
         String newRefreshToken = jwtProvider.generateRefreshToken(user.getId());
