@@ -8,6 +8,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import com.innowise.auth.exception.ResourceNotFoundException;
 
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -119,6 +123,25 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deleteUser_ShouldReturnNoContent_WhenUserExists() throws Exception {
+        String username = "deleteme";
+        doNothing().when(authService).deleteByUsername(username);
+
+        mockMvc.perform(delete("/auth/users/{username}", username))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteUser_ShouldReturnNotFound_WhenUserDoesNotExist() throws Exception {
+        String username = "nonexistent";
+        doThrow(new ResourceNotFoundException("User not found"))
+                .when(authService).deleteByUsername(username);
+
+        mockMvc.perform(delete("/auth/users/{username}", username))
+                .andExpect(status().isNotFound());
     }
 
 }
