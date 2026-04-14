@@ -22,12 +22,12 @@ public class AuthController {
      * Registers a new user.
      *
      * @param request the registration request
-     * @return HTTP 200 OK if registration is successful
+     * @return HTTP 200 OK with the generated user ID if registration is successful
      */
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Long> register(@Valid @RequestBody RegisterRequest request) {
+        Long userId = authService.register(request);
+        return ResponseEntity.ok(userId);
     }
 
     /**
@@ -61,5 +61,18 @@ public class AuthController {
     @PostMapping("/validate")
     public ResponseEntity<Boolean> validate(@Valid @RequestBody TokenValidationRequest request) {
         return ResponseEntity.ok(authService.validateToken(request.getToken()));
+    }
+
+    /**
+     * Deletes a user by their username.
+     * This endpoint is primarily used for rollback scenarios during registration failures.
+     *
+     * @param username the username of the user to delete
+     * @return HTTP 204 No Content if deletion is successful
+     */
+    @DeleteMapping("/users/{username}")
+    public ResponseEntity<Void> deleteUser(@PathVariable String username) {
+        authService.deleteByUsername(username);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -51,7 +51,13 @@ class AuthServiceImplTest {
         when(roleRepository.findByName(Role.RoleName.USER)).thenReturn(Optional.of(role));
         when(passwordEncoder.encode("1234")).thenReturn("encoded");
 
-        authService.register(request);
+        User savedUser = new User();
+        savedUser.setId(1L);
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+
+        Long userId = authService.register(request);
+        assertNotNull(userId);
+        assertEquals(1L, userId);
 
         verify(userRepository, times(1)).save(any(User.class));
     }
@@ -180,5 +186,28 @@ class AuthServiceImplTest {
         when(jwtProvider.isRefreshToken(token)).thenReturn(false);
 
         assertThrows(InvalidCredentialsException.class, () -> authService.refresh(token));
+    }
+
+    @Test
+    void shouldDeleteUserByUsername() {
+        String username = "test";
+        User user = new User();
+        user.setId(1L);
+        user.setUsername(username);
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        authService.deleteByUsername(username);
+
+        verify(userRepository, times(1)).delete(user);
+    }
+
+    @Test
+    void shouldThrowException_whenUserNotFound() {
+        String username = "notfound";
+        when(userRepository.findByUsername(username)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                authService.deleteByUsername(username)
+        );
+        verify(userRepository, never()).delete(any());
     }
 }
