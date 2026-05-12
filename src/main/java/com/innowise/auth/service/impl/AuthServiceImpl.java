@@ -29,7 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProvider jwtProvider;
 
     @Override
-    public void register(RegisterRequest request) {
+    public Long register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new UserAlreadyExistsException("User already exists");
         }
@@ -43,7 +43,8 @@ public class AuthServiceImpl implements AuthService {
                 .roles(Set.of(role))
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        return savedUser.getId();
     }
 
     @Override
@@ -95,6 +96,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public boolean validateToken(String token) {
         return jwtProvider.validateToken(token);
+    }
+
+    @Override
+    public void deleteByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        userRepository.delete(user);
     }
 
 }

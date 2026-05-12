@@ -30,8 +30,9 @@ public interface AuthService {
      * Registers a new user with the provided credentials.
      *
      * @param request the registration request containing username and password
+     * @return the generated user ID of the newly registered user
      */
-    void register(RegisterRequest request);
+    Long register(RegisterRequest request);
 
     /**
      * Validates the provided JWT token.
@@ -40,4 +41,13 @@ public interface AuthService {
      * @return true if the token is valid, false otherwise
      */
     boolean validateToken(String token);
+
+    /**
+     * Deletes a user by their username.
+     * Used for rollback operations when user registration fails in downstream services.
+     *
+     * @param username the username of the user to delete
+     * @throws RuntimeException if user with given username does not exist
+     */
+    void deleteByUsername(String username);
 }
